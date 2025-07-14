@@ -32,19 +32,40 @@ def rewrite(temp_dataframe, sheet):
         # 将更新后的DataFrame写回到Excel文件
 
 
-def append_row(sheet, **kwargs):           #表尾加一行
+def show_sheet(sheet):                  #读取指定sheet
     ensure_exists(sheet)
+    df = pd.read_excel(excel_file, sheet_name=sheet)
+    print(df)
+
+
+
+def append_row(sheet, **kwargs):           #表尾加一行
+    # ensure_exists(sheet)
     df = pd.read_excel(excel_file, sheet_name=sheet)
     new_row = pd.DataFrame([kwargs])
     df = pd.concat([df, new_row], ignore_index=True)
     
-    rewrite(df, sheet)
-    print(f"append: 已添加数据到工作表 {sheet}: {kwargs}")
+    #rewrite(df, sheet)
+    #print(f"append: 已添加数据到工作表 {sheet}: {kwargs}")
+
+
+def insert_a_row(sheet, index, **kwargs):  #在指定行插入一行
+    ensure_exists(sheet)
+    df = pd.read_excel(excel_file, sheet_name=sheet)
+    new_row = pd.DataFrame([kwargs])
+    if index < 0 or index > len(df):
+        print(f"insert: 索引 {index} 超出范围，无法插入行。")
+        return None
+    else:
+        df = pd.concat([df.iloc[:index], new_row, df.iloc[index:]], ignore_index=True)
+        rewrite(df, sheet)
+        print(f"insert: 已在工作表 {sheet} 的索引 {index} 处插入新行: {kwargs}")
+        return df
+    
 
 
 
-
-def find_student(sheet, col, name):         #用任意一列的值查找
+def find_row(sheet, col, name):         #用任意一列的值查找
     ensure_exists(sheet)
     df = pd.read_excel(excel_file, sheet_name=sheet)
     if col not in df.columns:
@@ -53,7 +74,7 @@ def find_student(sheet, col, name):         #用任意一列的值查找
 
     result = df[df[col] == name]
     if result.empty:
-        print(f"find: 未找到学生 '{name}' 在工作表 '{sheet}' 中。")
+        print(f"find: 未找到 '{name}' 在工作表 '{sheet}' 中。")
         return None
     else:
         
@@ -67,16 +88,16 @@ def find_student(sheet, col, name):         #用任意一列的值查找
         return pd.DataFrame(row_list, index=idp)
 
 
-def delete_one_row(sheet, col, name):       #删除指定学生
+def delete_one_row(sheet, col, name):       #删除指定的一行
     ensure_exists(sheet)
-    df : DataFrame = pd.read_excel(excel_file, sheet_name=sheet)
-    target_row : DataFrame = find_student(sheet, col, name)  # 提取符合条件的行
+    df = pd.read_excel(excel_file, sheet_name=sheet)
+    target_row = find_row(sheet, col, name)  # 提取符合条件的行
     if target_row is None:
-        print(f"delete: 未找到学生 '{name}' 在工作表 '{sheet}' 中。")
+        print(f"delete: 未找到 '{name}' 在工作表 '{sheet}' 中。")
         return None
     while True:
         try:
-            indices_to_drop = list(map(int, input("delete: 输入希望删除的学生的行号索引（多个用空格分隔）: ").split()))
+            indices_to_drop = list(map(int, input("delete: 输入希望删除的行号索引（多个用空格分隔）: ").split()))
             if not all(idx in target_row.index for idx in indices_to_drop):
                 print("delete: 输入的行号索引无效，请重新输入。")
                 continue
@@ -92,11 +113,11 @@ def delete_one_row(sheet, col, name):       #删除指定学生
     rewrite(df, sheet)
     if len(indices_to_drop) == 0:
         print(f"delete: 未删除任何行，因为输入的索引为空。")
-    return len(indices_to_drop)
+    return indices_to_drop
 
 
 
-def delete_range(sheet, col, name):       #删除指定学生
+def delete_range(sheet, col, name):       #删除同名的全部行
     ensure_exists(sheet)
     df = pd.read_excel(excel_file, sheet_name=sheet)
     
@@ -113,24 +134,39 @@ def delete_range(sheet, col, name):       #删除指定学生
     delete_length = original_count - len(df)
     # 检查是否有行被删除
     if len(df) == original_count: 
-        print(f"未找到学生 '{name}' 在工作表 '{sheet}' 中。")
+        print(f"未找到 '{name}' 在工作表 '{sheet}' 中。")
         return 0
     
     rewrite(df, sheet)
-    print(f"已删除学生 '{name}' 从工作表 '{sheet}'")
+    print(f"已删除 '{name}' 从工作表 '{sheet}'")
     return delete_length
 
+
+def edit_row(sheet, col, name):     #unfinished(input)
+    edit_index = delete_one_row(sheet, col, name)
+    for idx in edit_index:
+        input_data = input(f"edit: 输入第{idx}行新的数据（格式为表头=数据，不同列之间以逗号分隔）: ")
+        # 这里应该解析输入的键值对，而不是使用 dir 函数
+        pairs = input_data.split(',')
+        new_data = {}
+        for pair in pairs:
+            key, value = pair.split('=')
+            new_data[key.strip()] = value.strip()
+        insert_a_row(sheet, idx, **new_data)
+
+     
 
 
 # 测试
 #append_row('students', Name='Tom', Score=90, Age=18)
 #append_row('sheet1', Name='Jerry', Score=85)
-delete_one_row('students', 'Name', 'Alex')
+#delete_one_row('students', 'Name', 'Alex')
 #print(delete_range('students', 'Name', 'Tom'))
+#show_sheet('students')
 
 
 '''
-#输入部分
+#输入部分(unfinished)
 print("Welcome to the Score Manager!")
 flag = 1
 while flag:
